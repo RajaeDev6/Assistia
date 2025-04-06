@@ -1,0 +1,164 @@
+{
+    "machine-learning": {
+        "name": "Machine Learning",
+        "resources": [
+            {
+                "title": "Introduction to Machine Learning",
+                "url": "https://www.coursera.org/learn/machine-learning",
+                "description": "A comprehensive course by Andrew Ng on Coursera"
+            },
+            {
+                "title": "Machine Learning Mastery",
+                "url": "https://machinelearningmastery.com/start-here/",
+                "description": "Practical tutorials and guides for ML"
+            },
+            {
+                "title": "Google's Machine Learning Crash Course",
+                "url": "https://developers.google.com/machine-learning/crash-course",
+                "description": "Free course by Google with practical exercises"
+            }
+        ],
+        "subtopics": {
+            "supervised-learning": {
+                "resources": [
+                    {
+                        "title": "Supervised Learning Tutorial",
+                        "url": "https://www.analyticsvidhya.com/blog/2021/01/a-complete-guide-to-supervised-learning/",
+                        "description": "Complete guide to supervised learning"
+                    },
+                    {
+                        "title": "Scikit-learn Supervised Learning",
+                        "url": "https://scikit-learn.org/stable/supervised_learning.html",
+                        "description": "Official documentation and examples"
+                    }
+                ]
+            },
+            "unsupervised-learning": {
+                "resources": [
+                    {
+                        "title": "Unsupervised Learning Guide",
+                        "url": "https://www.analyticsvidhya.com/blog/2021/01/a-complete-guide-to-unsupervised-learning/",
+                        "description": "Complete guide to unsupervised learning"
+                    },
+                    {
+                        "title": "Clustering Algorithms",
+                        "url": "https://towardsdatascience.com/the-5-clustering-algorithms-data-scientists-need-to-know-a36d136ef68",
+                        "description": "Overview of clustering algorithms"
+                    }
+                ]
+            },
+            "reinforcement-learning": {
+                "resources": [
+                    {
+                        "title": "Reinforcement Learning Course",
+                        "url": "https://www.udacity.com/course/reinforcement-learning--ud600",
+                        "description": "Free course on reinforcement learning"
+                    },
+                    {
+                        "title": "OpenAI Gym Documentation",
+                        "url": "https://gym.openai.com/docs/",
+                        "description": "Environment for developing RL algorithms"
+                    }
+                ]
+            }
+        }
+    },
+    "neural-networks": {
+        "name": "Neural Networks",
+        "resources": [
+            {
+                "title": "Neural Networks and Deep Learning",
+                "url": "http://neuralnetworksanddeeplearning.com/",
+                "description": "Free online book by Michael Nielsen"
+            },
+            {
+                "title": "Deep Learning Specialization",
+                "url": "https://www.coursera.org/specializations/deep-learning",
+                "description": "Comprehensive course by Andrew Ng"
+            }
+        ],
+        "subtopics": {
+            "deep-learning": {
+                "resources": [
+                    {
+                        "title": "Deep Learning Book",
+                        "url": "https://www.deeplearningbook.org/",
+                        "description": "Comprehensive book on deep learning"
+                    },
+                    {
+                        "title": "PyTorch Tutorials",
+                        "url": "https://pytorch.org/tutorials/",
+                        "description": "Official PyTorch tutorials"
+                    }
+                ]
+            },
+            "cnn": {
+                "resources": [
+                    {
+                        "title": "CNN Tutorial",
+                        "url": "https://cs231n.github.io/convolutional-networks/",
+                        "description": "Stanford's guide to CNNs"
+                    }
+                ]
+            },
+            "rnn": {
+                "resources": [
+                    {
+                        "title": "Understanding LSTM Networks",
+                        "url": "https://colah.github.io/posts/2015-08-Understanding-LSTMs/",
+                        "description": "Guide to LSTM networks"
+                    }
+                ]
+            }
+        }
+    },
+    "nlp": {
+        "name": "Natural Language Processing",
+        "resources": [
+            {
+                "title": "NLP with Python",
+                "url": "https://www.nltk.org/book/",
+                "description": "Natural Language Processing with Python book"
+            },
+            {
+                "title": "Hugging Face Course",
+                "url": "https://huggingface.co/course/",
+                "description": "Free NLP course using transformers"
+            }
+        ],
+        "subtopics": {
+            "text-classification": {
+                "resources": [
+                    {
+                        "title": "Text Classification Guide",
+                        "url": "https://monkeylearn.com/text-classification/",
+                        "description": "Guide to text classification"
+                    },
+                    {
+                        "title": "Scikit-learn Text Classification",
+                        "url": "https://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html",
+                        "description": "Text classification with scikit-learn"
+                    }
+                ]
+            },
+            "sentiment-analysis": {
+                "resources": [
+                    {
+                        "title": "Sentiment Analysis Tutorial",
+                        "url": "https://www.analyticsvidhya.com/blog/2021/06/sentiment-analysis-using-nlp/",
+                        "description": "Guide to sentiment analysis"
+                    }
+                ]
+            },
+            "language-models": {
+                "resources": [
+                    {
+                        "title": "Transformers Course",
+                        "url": "https://huggingface.co/course/chapter1",
+                        "description": "Introduction to transformer models"
+                    }
+                ]
+            }
+        }
+    }
+} 

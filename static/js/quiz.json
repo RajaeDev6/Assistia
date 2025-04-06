@@ -1,0 +1,387 @@
+{
+    "machine-learning": {
+        "name": "Machine Learning",
+        "questions": [
+            {
+                "question": "What is the main goal of machine learning?",
+                "options": [
+                    "A. To create artificial intelligence",
+                    "B. To enable computers to learn from data",
+                    "C. To replace human decision making",
+                    "D. To automate all tasks"
+                ],
+                "correct": "B"
+            },
+            {
+                "question": "Which type of learning uses labeled data?",
+                "options": [
+                    "A. Unsupervised Learning",
+                    "B. Reinforcement Learning",
+                    "C. Supervised Learning",
+                    "D. Deep Learning"
+                ],
+                "correct": "C"
+            },
+            {
+                "question": "What is overfitting in machine learning?",
+                "options": [
+                    "A. When the model performs well on training data but poorly on new data",
+                    "B. When the model is too simple",
+                    "C. When the model has too few parameters",
+                    "D. When the model is too fast"
+                ],
+                "correct": "A"
+            },
+            {
+                "question": "What is a neural network?",
+                "options": [
+                    "A. A type of computer hardware",
+                    "B. A system of interconnected nodes that process information",
+                    "C. A database management system",
+                    "D. A type of programming language"
+                ],
+                "correct": "B"
+            },
+            {
+                "question": "What is the purpose of a validation set?",
+                "options": [
+                    "A. To train the model",
+                    "B. To test the model on unseen data",
+                    "C. To tune hyperparameters",
+                    "D. To store the final model"
+                ],
+                "correct": "C"
+            }
+        ]
+    },
+    "neural-networks": {
+        "name": "Neural Networks",
+        "questions": [
+            {
+                "question": "What is an artificial neuron?",
+                "options": [
+                    "A. A biological neuron",
+                    "B. A mathematical function that simulates a biological neuron",
+                    "C. A type of computer hardware",
+                    "D. A programming language"
+                ],
+                "correct": "B"
+            },
+            {
+                "question": "What is the purpose of an activation function?",
+                "options": [
+                    "A. To connect neurons",
+                    "B. To introduce non-linearity",
+                    "C. To store weights",
+                    "D. To process inputs"
+                ],
+                "correct": "B"
+            },
+            {
+                "question": "What is backpropagation?",
+                "options": [
+                    "A. A type of neural network",
+                    "B. A learning algorithm",
+                    "C. An activation function",
+                    "D. A data preprocessing technique"
+                ],
+                "correct": "B"
+            },
+            {
+                "question": "What is a deep neural network?",
+                "options": [
+                    "A. A network with many layers",
+                    "B. A network with many neurons",
+                    "C. A network with complex connections",
+                    "D. A network with high accuracy"
+                ],
+                "correct": "A"
+            },
+            {
+                "question": "What is a convolutional neural network (CNN) used for?",
+                "options": [
+                    "A. Image processing",
+                    "B. Text processing",
+                    "C. Audio processing",
+                    "D. All of the above"
+                ],
+                "correct": "A"
+            }
+        ]
+    },
+    "nlp": {
+        "name": "Natural Language Processing",
+        "questions": [
+            {
+                "question": "What is Natural Language Processing (NLP)?",
+                "options": [
+                    "A. A type of programming language",
+                    "B. A field of AI that deals with human language",
+                    "C. A type of neural network",
+                    "D. A data preprocessing technique"
+                ],
+                "correct": "B"
+            },
+            {
+                "question": "What is tokenization in NLP?",
+                "options": [
+                    "A. Converting text to numbers",
+                    "B. Breaking text into words or phrases",
+                    "C. Removing stop words",
+                    "D. Creating word embeddings"
+                ],
+                "correct": "B"
+            },
+            {
+                "question": "What is a word embedding?",
+                "options": [
+                    "A. A type of neural network",
+                    "B. A way to represent words as vectors",
+                    "C. A data preprocessing technique",
+                    "D. A type of activation function"
+                ],
+                "correct": "B"
+            },
+            {
+                "question": "What is a language model?",
+                "options": [
+                    "A. A type of neural network",
+                    "B. A model that predicts the next word in a sequence",
+                    "C. A data preprocessing technique",
+                    "D. A type of activation function"
+                ],
+                "correct": "B"
+            },
+            {
+                "question": "What is sentiment analysis?",
+                "options": [
+                    "A. Analyzing text structure",
+                    "B. Determining the emotional tone of text",
+                    "C. Translating text",
+                    "D. Summarizing text"
+                ],
+                "correct": "B"
+            }
+        ]
+    },
+     "computer-vision": {
+          "name": "Computer Vision",
+          "questions": [
+            {
+              "question": "What is the main goal of computer vision?",
+              "options": [
+                "A. To enhance audio signals",
+                "B. To interpret and understand visual information",
+                "C. To translate human languages",
+                "D. To manage databases"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "What is image classification?",
+              "options": [
+                "A. Labeling pixels in an image",
+                "B. Categorizing an entire image into a class",
+                "C. Creating 3D models from images",
+                "D. Compressing image files"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "Which technique is commonly used for object detection?",
+              "options": [
+                "A. SVM",
+                "B. YOLO",
+                "C. Naive Bayes",
+                "D. PCA"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "What does image segmentation do?",
+              "options": [
+                "A. Converts images to grayscale",
+                "B. Divides an image into meaningful parts",
+                "C. Adds filters to images",
+                "D. Crops the image edges"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "Which neural network is commonly used in computer vision?",
+              "options": [
+                "A. RNN",
+                "B. LSTM",
+                "C. CNN",
+                "D. GAN"
+              ],
+              "correct": "C"
+            }
+          ]
+        },
+        "reinforcement-learning": {
+          "name": "Reinforcement Learning",
+          "questions": [
+            {
+              "question": "What is the primary goal of reinforcement learning?",
+              "options": [
+                "A. To analyze text data",
+                "B. To classify data points",
+                "C. To learn actions that maximize cumulative reward",
+                "D. To cluster similar data"
+              ],
+              "correct": "C"
+            },
+            {
+              "question": "What is an agent in reinforcement learning?",
+              "options": [
+                "A. A hardware component",
+                "B. A dataset",
+                "C. The entity that takes actions in an environment",
+                "D. A type of algorithm"
+              ],
+              "correct": "C"
+            },
+            {
+              "question": "What does Q in Q-Learning represent?",
+              "options": [
+                "A. Quantity",
+                "B. Quality",
+                "C. Queue",
+                "D. Query"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "What is the purpose of a reward in reinforcement learning?",
+              "options": [
+                "A. To penalize the agent",
+                "B. To guide the learning process",
+                "C. To store data",
+                "D. To track losses"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "Which algorithm is a type of policy-based method?",
+              "options": [
+                "A. Q-Learning",
+                "B. SVM",
+                "C. Policy Gradients",
+                "D. CNN"
+              ],
+              "correct": "C"
+            }
+          ]
+        },
+        "ethics": {
+          "name": "AI Ethics",
+          "questions": [
+            {
+              "question": "What does AI bias refer to?",
+              "options": [
+                "A. Errors in hardware",
+                "B. Fair and equal treatment by AI",
+                "C. Unfair outcomes caused by biased data",
+                "D. Faster processing speed"
+              ],
+              "correct": "C"
+            },
+            {
+              "question": "Why is transparency important in AI systems?",
+              "options": [
+                "A. To make AI faster",
+                "B. To reduce costs",
+                "C. To help users understand how decisions are made",
+                "D. To improve graphic quality"
+              ],
+              "correct": "C"
+            },
+            {
+              "question": "What is one major privacy concern with AI?",
+              "options": [
+                "A. Data compression",
+                "B. Unintentional deletion",
+                "C. Unauthorized use of personal data",
+                "D. Power consumption"
+              ],
+              "correct": "C"
+            },
+            {
+              "question": "What is the role of AI governance?",
+              "options": [
+                "A. Control hardware components",
+                "B. Manage data storage",
+                "C. Establish rules for safe AI use",
+                "D. Design user interfaces"
+              ],
+              "correct": "C"
+            },
+            {
+              "question": "What can help reduce bias in AI systems?",
+              "options": [
+                "A. Using larger batch sizes",
+                "B. Random initialization",
+                "C. Using diverse and balanced training data",
+                "D. Training on GPUs"
+              ],
+              "correct": "C"
+            }
+          ]
+        },
+        "applications": {
+          "name": "AI Applications",
+          "questions": [
+            {
+              "question": "What is a key benefit of AI in healthcare?",
+              "options": [
+                "A. Reduced patient interaction",
+                "B. Faster diagnostics and personalized treatment",
+                "C. Removing doctors from practice",
+                "D. Simplifying hospital layouts"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "How is AI used in finance?",
+              "options": [
+                "A. Forecasting weather patterns",
+                "B. Detecting fraudulent transactions",
+                "C. Building highways",
+                "D. Designing logos"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "Which application is an example of an autonomous system?",
+              "options": [
+                "A. Chatbot",
+                "B. Self-driving car",
+                "C. Spreadsheet software",
+                "D. Data cleaning tool"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "What does AI bring to customer service?",
+              "options": [
+                "A. Increased waiting time",
+                "B. Personalized interactions via chatbots",
+                "C. Reduced service availability",
+                "D. Complex menus"
+              ],
+              "correct": "B"
+            },
+            {
+              "question": "Which AI technology is commonly used in virtual assistants?",
+              "options": [
+                "A. Computer Vision",
+                "B. Robotics",
+                "C. Natural Language Processing",
+                "D. Reinforcement Learning"
+              ],
+              "correct": "C"
+            }
+          ]
+        }
+} 

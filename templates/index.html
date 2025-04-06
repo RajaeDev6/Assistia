@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Learning Chatbot</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div id="auth-container" class="container">
+        <div class="auth-box">
+            <h1>AI Learning Chatbot</h1>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="login">Login</button>
+                <button class="tab-btn" data-tab="register">Register</button>
+            </div>
+            <div id="login-form" class="form active">
+                <input type="text" id="login-username" placeholder="Username">
+                <input type="password" id="login-password" placeholder="Password">
+                <button id="login-btn">Login</button>
+            </div>
+            <div id="register-form" class="form">
+                <input type="text" id="register-username" placeholder="Username">
+                <input type="password" id="register-password" placeholder="Password">
+                <button id="register-btn">Register</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="container hidden">
+        <div class="sidebar">
+            <div class="user-info">
+                <h3 id="username-display"></h3>
+                <div class="progress-bar">
+                    <div class="progress" id="progress-bar"></div>
+                </div>
+                <p id="user-level"></p>
+            </div>
+            <button id="new-chat-btn" class="new-chat-btn">New Chat</button>
+            <div class="chat-history">
+                <h3>Chat History</h3>
+                <div id="history-list"></div>
+            </div>
+            <button id="logout-btn" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+        <div class="main-content">
+            <div class="topics-grid">
+                <div class="topic-card" data-topic="machine-learning">
+                    <h3>Machine Learning</h3>
+                    <p>Learn about supervised and unsupervised learning</p>
+                </div>
+                <div class="topic-card" data-topic="neural-networks">
+                    <h3>Neural Networks</h3>
+                    <p>Understand the basics of artificial neural networks</p>
+                </div>
+                <div class="topic-card" data-topic="nlp">
+                    <h3>Natural Language Processing</h3>
+                    <p>Explore how AI understands human language</p>
+                </div>
+                <div class="topic-card" data-topic="computer-vision">
+                    <h3>Computer Vision</h3>
+                    <p>Learn about image recognition and processing</p>
+                </div>
+                <div class="topic-card" data-topic="reinforcement-learning">
+                    <h3>Reinforcement Learning</h3>
+                    <p>Discover how AI learns through trial and error</p>
+                </div>
+                <div class="topic-card" data-topic="ethics">
+                    <h3>AI Ethics</h3>
+                    <p>Understand the ethical implications of AI</p>
+                </div>
+                <div class="topic-card" data-topic="applications">
+                    <h3>AI Applications</h3>
+                    <p>Explore real-world AI applications</p>
+                </div>
+            </div>
+            <div class="chat-interface hidden">
+                <div class="chat-messages" id="chat-messages"></div>
+                <div class="chat-input">
+                    <input type="text" id="message-input" placeholder="Type your message...">
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/quizzes.js"></script>
+    <script>
+        // Add event listeners after DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Login button click handler
+            document.getElementById('login-btn').addEventListener('click', function() {
+                login();
+            });
+
+            // Register button click handler
+            document.getElementById('register-btn').addEventListener('click', function() {
+                register();
+            });
+
+            // Enter key handlers for inputs
+            document.getElementById('login-password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    login();
+                }
+            });
+
+            document.getElementById('register-password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    register();
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
