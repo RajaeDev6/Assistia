@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, Request, Response, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -26,46 +26,48 @@ import re
 # Load environment variables
 load_dotenv()
 
-# Get Together AI API key
+# Initialize environment variables
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+MONGODB_URI = os.getenv('MONGODB_URI')
+
+# Validate required environment variables
 if not TOGETHER_API_KEY:
     raise ValueError("TOGETHER_API_KEY not found in environment variables")
-
-# Get MongoDB URI from environment variables
-MONGODB_URI = os.getenv('MONGODB_URI')
 if not MONGODB_URI:
     raise ValueError("MONGODB_URI not found in environment variables")
 
-# Initialize MongoDB client
-client = AsyncIOMotorClient(MONGODB_URI)
-db = client.ai_learning_bot
+# MongoDB setup
+try:
+    client = AsyncIOMotorClient(MONGODB_URI)
+    db = client.ai_learning_bot
+    print("Successfully connected to MongoDB")
+except Exception as e:
+    print(f"Error connecting to MongoDB: {str(e)}")
+    raise e
 
 # Initialize FastAPI app
 app = FastAPI()
 
 # Add CORS middleware
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware, 
+    allow_origins=["*"], 
+    allow_credentials=True, 
+    allow_methods=["*"], 
+    allow_headers=["*"]
+)
 
 # Session storage (in-memory for simplicity)
 sessions = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: verify database connection
-    try:
-        await client.admin.command('ping')
-        print("Successfully connected to MongoDB")
-    except Exception as e:
-        print(f"MongoDB Connection Error: {str(e)}")
-        print("Please verify your MongoDB URI includes correct username, password, and database")
-        raise
     yield
-    # Shutdown: cleanup
-    client.close()
-    print("Closed MongoDB connection")
+    # Cleanup on shutdown
+    if client:
+        await client.close()
 
-# Initialize FastAPI app with lifespan
-app = FastAPI(lifespan=lifespan)
+app.router.lifespan_context = lifespan
 
 # Create directories if they don't exist
 os.makedirs("static/js", exist_ok=True)
@@ -180,6 +182,26 @@ async def login(request: Request, response: Response):
         }
     except Exception as e:
         return {"error": f"Database error: {str(e)}"}
+
+@app.post("/api/logout")
+async def logout(request: Request):
+    try:
+        # Get the session token from cookie
+        session_token = request.cookies.get("session_token")
+        if session_token:
+            # Remove session from memory
+            if session_token in sessions:
+                del sessions[session_token]
+            
+            # Create response that will clear the cookie
+            response = JSONResponse({"success": True})
+            response.delete_cookie("session_token")
+            return response
+            
+        return JSONResponse({"success": True})
+    except Exception as e:
+        print(f"Error during logout: {str(e)}")
+        return JSONResponse({"success": False, "error": str(e)})
 
 # Session check endpoint
 @app.get("/api/check-session")
@@ -298,234 +320,97 @@ async def get_together_ai_response(messages):
             data = await response.json()
             return data["choices"][0]["message"]["content"]
 
-@app.get("/api/progress")
-async def get_progress(current_user: dict = Depends(get_current_user)):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return {"progress": current_user.get("progress", 0)}
-
 @app.post("/api/update-progress")
 async def update_progress(request: Request, current_user: dict = Depends(get_current_user)):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
     try:
+        if not current_user:
+            return {"success": False, "error": "Not authenticated"}
+
         data = await request.json()
-        new_score = data.get("score", 0)
+        topic = data.get("topic")
+        score = data.get("score", 0)
+        user_id = ObjectId(current_user["_id"])
         
-        # Update user's progress in database
-        result = await db.users.update_one(
-            {"_id": current_user["_id"]},
-            {"$set": {"progress": new_score}}
+        if not topic:
+            return {"success": False, "error": "Topic required"}
+
+        # Get this specific user's progress
+        user = await db.users.find_one({"_id": user_id})
+        if not user:
+            return {"success": False, "error": "User not found"}
+
+        # Initialize progress if needed
+        if "progress" not in user:
+            user["progress"] = {}
+        
+        # Calculate percentage score
+        if score > 0:  # This is a quiz submission
+            total_questions = len(TOPIC_QUIZZES[topic]["questions"])
+            percentage = int((score / total_questions) * 100)
+            # Update only if score is higher than previous
+            if topic not in user["progress"] or percentage > user["progress"][topic]:
+                user["progress"][topic] = percentage
+
+        # Update this user's progress in database
+        await db.users.update_one(
+            {"_id": user_id},
+            {"$set": {
+                "progress": user["progress"],
+                "last_updated": datetime.utcnow()
+            }}
         )
-        
-        if result.modified_count == 0:
-            raise HTTPException(status_code=500, detail="Failed to update progress")
-        
-        return {"success": True, "progress": new_score}
+
+        return {
+            "success": True,
+            "progress": user["progress"].get(topic, 0)
+        }
+
     except Exception as e:
         print(f"Error updating progress: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"success": False, "error": str(e)}
 
-@app.post("/api/update-progress")
-async def update_user_progress(user_id, topic, score=1):
-    # Get current progress
-    user = await db.users.find_one({"_id": user_id})
-    if not user:
-        return
-    
-    # Initialize progress if not exists
-    if not isinstance(user.get("progress"), dict):
-        user["progress"] = {}
-    
-    if topic not in user["progress"]:
-        user["progress"][topic] = 0
-    
-    # If score is a quiz score (number of correct answers)
-    if isinstance(score, (int, float)) and score > 1:
-        # Get total questions for the topic
-        topic_quizzes = TOPIC_QUIZZES.get(topic, {})
-        if topic_quizzes and "questions" in topic_quizzes:
-            total_questions = len(topic_quizzes["questions"])
-            # Calculate percentage
-            percentage = (score / total_questions) * 100
-            
-            # Update progress based on percentage
-            if percentage == 100:  # All correct
-                user["progress"][topic] = min(100, user["progress"][topic] + 10)
-            elif percentage >= 60:  # Above 60%
-                user["progress"][topic] = min(100, user["progress"][topic] + 3)
-            else:  # Below 60%
-                user["progress"][topic] = min(100, user["progress"][topic] + 1)
-    else:
-        # For regular interactions (questions asked, etc.)
-        user["progress"][topic] = min(100, user["progress"][topic] + score)
-    
-    # Calculate total progress by summing all topic progress values
-    total_progress = sum(progress for progress in user["progress"].values() if isinstance(progress, (int, float)))
-    total_topics = len(user["progress"])
-    average_progress = total_progress / total_topics if total_topics > 0 else 0
-    
-    # Update level based on progress
-    if average_progress >= 100:
-        user["level"] = "advanced"
-    elif average_progress >= 50:
-        user["level"] = "intermediate"
-    else:
-        user["level"] = "beginner"
-    
-    # Update user in database
-    await db.users.update_one(
-        {"_id": user_id},
-        {"$set": {
-            "progress": user["progress"],
-            "level": user.get("level", "beginner")
-        }}
-    )
-    
-    return user["progress"]
-
-@app.get("/api/resources")
-async def get_resources(topic: str = None, subtopic: str = None):
-    try:
-        with open('static/js/resources.json', 'r') as f:
-            resources = json.load(f)
-            
-        if topic:
-            if topic in resources:
-                if subtopic and subtopic in resources[topic].get('subtopics', {}):
-                    selected_resources = resources[topic]['subtopics'][subtopic]['resources']
-                else:
-                    selected_resources = resources[topic]['resources']
-            else:
-                selected_resources = []
-        else:
-            selected_resources = []
-            for topic_resources in resources.values():
-                selected_resources.extend(topic_resources.get('resources', []))
-                for subtopic_resources in topic_resources.get('subtopics', {}).values():
-                    selected_resources.extend(subtopic_resources.get('resources', []))
-        
-        messages = []
-        for r in selected_resources:
-            messages.append({
-                "response": f"<a href='{r['url']}' target='_blank'>{r['title']}</a>",
-                "is_resource": True,
-                "is_html": True
-            })
-        
-        return {"resources": messages}
-    except Exception as e:
-        print(f"Error loading resources: {str(e)}")
-        return {"resources": []}
-
-@app.post("/api/chat")
-async def chat(request: Request, current_user: dict = Depends(get_current_user)):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    data = await request.json()
-    message = data.get("message")
-    topic = data.get("topic")
-    
-    if not topic:
-        raise HTTPException(status_code=400, detail="Topic is required")
-    
-    # If no message is provided, return topic introduction
-    if not message:
-        topic_info = TOPICS.get(topic)
-        if not topic_info:
-            raise HTTPException(status_code=400, detail="Invalid topic")
-        
-        # Get brief explanation from Together AI
-        response = await get_together_ai_response([
-            {"role": "system", "content": "You are an AI tutor. Provide a very brief, engaging explanation of the topic in 1-2 sentences. Keep it simple and interesting."},
-            {"role": "user", "content": f"Explain {topic_info['name']} in a simple way that a beginner can understand."}
-        ])
-        
-        return {
-            "response": f"{response}\n\nHere are some subtopics you can explore under {topic_info['name']}:\n" + 
-                       "\n".join([f"- {subtopic}" for subtopic in topic_info['subtopics']]),
-            "subtopics": topic_info["subtopics"]
-        }
-    
-    # Common AI-related keywords for broader topic detection
-    ai_keywords = [
-        'ai', 'artificial intelligence', 'machine learning', 'deep learning', 'neural network',
-        'algorithm', 'model', 'training', 'dataset', 'data', 'learn', 'predict', 'classification',
-        'regression', 'clustering', 'nlp', 'computer vision', 'robotics', 'automation',
-        'supervised', 'unsupervised', 'reinforcement', 'ethics', 'bias', 'framework',
-        'python', 'tensorflow', 'pytorch', 'keras', 'scikit', 'opencv', 'roadmap', 'career',
-        'course', 'study', 'guide', 'path', 'recommendation', 'project', 'application'
-    ]
-    
-    message_lower = message.lower()
-    topic_info = TOPICS.get(topic, {})
-    
-    # Check if the message contains any AI-related keywords
-    is_ai_related = any(keyword in message_lower for keyword in ai_keywords)
-    
-    # If not AI-related, check if it might be a general question about learning AI
-    if not is_ai_related and ('how' in message_lower or 'what' in message_lower or 'why' in message_lower or 'where' in message_lower):
-        # Get Together AI to classify if the question is about learning/understanding AI
-        classify_response = await get_together_ai_response([
-            {"role": "system", "content": "You are a classifier. Respond with 'yes' if the question is about learning, understanding, or working with AI/ML/Data Science, otherwise respond with 'no'."},
-            {"role": "user", "content": message}
-        ])
-        is_ai_related = 'yes' in classify_response.lower()
-    
-    # If still not AI-related, return the generic response
-    if not is_ai_related:
-        return {
-            "response": "I am an AI learning assistant. Please ask me questions related to artificial intelligence. I can help you with AI concepts, learning resources, career guidance, technical details, or any other AI-related topics."
-        }
-    
-    # For AI-related questions, get response from Together AI with a more flexible system prompt
-    response = await get_together_ai_response([
-        {"role": "system", "content": """You are an AI tutor with expertise in all areas of artificial intelligence. 
-        Provide helpful, accurate, and educational responses about any AI-related topic, including but not limited to:
-        - Technical concepts and explanations
-        - Learning resources and roadmaps
-        - Career guidance and industry trends
-        - Practical applications and real-world examples
-        - Best practices and recommendations
-        Keep responses focused on AI and related fields."""},
-        {"role": "user", "content": message}
-    ])
-    
-    return {"response": response}
-
-# Progress endpoint
 @app.get("/api/progress")
 async def get_progress(current_user: dict = Depends(get_current_user)):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    return {
-        "progress": current_user.get("progress", {}),
-        "level": current_user.get("level", "beginner")
-    }
-
-# History endpoint
-@app.get("/api/history")
-async def get_history(request: Request):
     try:
-        user_id = request.headers.get("user-id") or request.query_params.get("user_id")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="User ID required")
+        if not current_user:
+            return {"progress": {}, "error": "Not authenticated"}
+
+        # Get progress for this specific user only
+        user_id = ObjectId(current_user["_id"])
+        user = await db.users.find_one(
+            {"_id": user_id},
+            {"progress": 1}  # Only get the progress field
+        )
         
+        if not user or "progress" not in user:
+            return {"progress": {}}
+
+        print(f"Getting progress for user: {current_user.get('username')} (ID: {user_id})")
+        return {"progress": user["progress"]}
+
+    except Exception as e:
+        print(f"Error getting progress: {str(e)}")
+        return {"progress": {}, "error": str(e)}
+
+@app.get("/api/history")
+async def get_history(request: Request, current_user: dict = Depends(get_current_user)):
+    try:
+        if not current_user:
+            return {"history": []}
+            
+        user_id = str(current_user["_id"])
         print(f"Fetching history for user_id: {user_id}")
         
-        # Get chat history from database, sorted by timestamp (newest first)
+        # Only get chats for this specific user
         cursor = db.chats.find({"user_id": user_id}).sort("timestamp", -1)
         history = []
         
         async for chat in cursor:
-            # Convert ObjectId to string
+            # Convert ObjectId and timestamp for JSON
             chat["_id"] = str(chat["_id"])
             chat["timestamp"] = chat["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
             
-            # Get preview from first message if available
+            # Get preview from first message
             if chat.get("messages") and len(chat["messages"]) > 0:
                 preview = chat["messages"][0].get("content", "")[:50]
                 chat["preview"] = preview + "..." if len(preview) >= 50 else preview
@@ -533,52 +418,127 @@ async def get_history(request: Request):
                 chat["preview"] = "Empty chat"
             
             history.append(chat)
-            print(f"Found chat - ID: {chat['_id']}, Topic: {chat.get('topic', 'Untitled')}")
         
-        print(f"Returning {len(history)} chats")
-        return {"history": history}
-    
+        # Get user's progress
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        progress = user.get("progress", {}) if user else {}
+        
+        return {
+            "history": history,
+            "progress": progress
+        }
     except Exception as e:
         print(f"Error getting history: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"history": [], "progress": {}}
+
+@app.post("/api/chat")
+async def chat(request: Request, current_user: dict = Depends(get_current_user)):
+    try:
+        if not current_user:
+            return {"error": "Not authenticated"}
+
+        data = await request.json()
+        message = data.get("message")
+        topic = data.get("topic")
+        
+        if not topic:
+            return {"error": "Topic is required"}
+
+        user_id = str(current_user["_id"])
+        
+        # If no message is provided, return topic introduction
+        if not message:
+            topic_info = TOPICS.get(topic)
+            if not topic_info:
+                return {"error": "Invalid topic"}
+            
+            # Get brief explanation from Together AI
+            response = await get_together_ai_response([
+                {"role": "system", "content": "You are an AI tutor. Provide a very brief, engaging explanation of the topic in 1-2 sentences. Keep it simple and interesting."},
+                {"role": "user", "content": f"Explain {topic_info['name']} in a simple way that a beginner can understand."}
+            ])
+            
+            # Save initial chat
+            chat_doc = {
+                "user_id": user_id,
+                "topic": topic,
+                "messages": [
+                    {"role": "assistant", "content": response}
+                ],
+                "timestamp": datetime.utcnow()
+            }
+            await db.chats.insert_one(chat_doc)
+            
+            return {
+                "response": f"{response}\n\nHere are some subtopics you can explore under {topic_info['name']}:\n" + 
+                           "\n".join([f"- {subtopic}" for subtopic in topic_info['subtopics']]),
+                "subtopics": topic_info.get("subtopics", [])
+            }
+
+        # Get response from Together AI
+        response = await get_together_ai_response([
+            {"role": "system", "content": """You are an AI tutor with expertise in all areas of artificial intelligence. 
+            Provide helpful, accurate, and educational responses about any AI-related topic."""},
+            {"role": "user", "content": message}
+        ])
+        
+        # Save chat with user_id
+        chat_doc = {
+            "user_id": user_id,
+            "topic": topic,
+            "messages": [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": response}
+            ],
+            "timestamp": datetime.utcnow()
+        }
+        
+        # Save to MongoDB with user_id
+        result = await db.chats.insert_one(chat_doc)
+        chat_id = str(result.inserted_id)
+        
+        return {
+            "response": response,
+            "chat_id": chat_id
+        }
+        
+    except Exception as e:
+        print(f"Error in chat: {str(e)}")
+        return {"error": str(e)}
 
 @app.get("/api/chat/{chat_id}")
-async def get_chat(chat_id: str, request: Request):
+async def get_chat(chat_id: str, current_user: dict = Depends(get_current_user)):
     try:
-        user_id = request.session.get("user_id")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Not authenticated")
+        if not current_user:
+            return {"error": "Not authenticated"}
+            
+        user_id = str(current_user["_id"])
         
-        # Get the chat from database
+        # Get chat and verify it belongs to this user
         chat = await db.chats.find_one({
             "_id": ObjectId(chat_id),
             "user_id": user_id
         })
         
         if not chat:
-            raise HTTPException(status_code=404, detail="Chat not found")
-        
-        # Convert ObjectId to string
+            return {"error": "Chat not found"}
+            
         chat["_id"] = str(chat["_id"])
         chat["timestamp"] = chat["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
         
-        return {
-            "topic": chat["topic"],
-            "messages": chat["messages"]
-        }
+        return chat
     except Exception as e:
-        print(f"Error loading chat: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error getting chat: {str(e)}")
+        return {"error": str(e)}
 
 @app.post("/api/save-chat")
-async def save_chat(request: Request):
+async def save_chat(request: Request, current_user: dict = Depends(get_current_user)):
     try:
+        if not current_user:
+            return {"success": False, "error": "Not authenticated"}
+            
         data = await request.json()
-        user_id = request.headers.get("user-id") or data.get("user_id")
-        
-        if not user_id:
-            print("No user_id provided")
-            raise HTTPException(status_code=401, detail="User ID required")
+        user_id = str(current_user["_id"])
         
         print(f"Saving chat for user_id: {user_id}")
         
@@ -614,7 +574,7 @@ async def save_chat(request: Request):
         }
     except Exception as e:
         print(f"Error saving chat: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"success": False, "error": str(e)}
 
 @app.get("/api/get-chats")
 async def get_chats(request: Request):
@@ -653,4 +613,38 @@ async def detect_resource_intent(message: str) -> bool:
     
     # Check if the response indicates a resource request
     return "yes" in response.lower()
+
+@app.get("/api/resources")
+async def get_resources(topic: str = None, subtopic: str = None):
+    try:
+        with open('static/js/resources.json', 'r') as f:
+            resources = json.load(f)
+            
+        if topic:
+            if topic in resources:
+                if subtopic and subtopic in resources[topic].get('subtopics', {}):
+                    selected_resources = resources[topic]['subtopics'][subtopic]['resources']
+                else:
+                    selected_resources = resources[topic]['resources']
+            else:
+                selected_resources = []
+        else:
+            selected_resources = []
+            for topic_resources in resources.values():
+                selected_resources.extend(topic_resources.get('resources', []))
+                for subtopic_resources in topic_resources.get('subtopics', {}).values():
+                    selected_resources.extend(subtopic_resources.get('resources', []))
+        
+        messages = []
+        for r in selected_resources:
+            messages.append({
+                "response": f"<a href='{r['url']}' target='_blank'>{r['title']}</a>",
+                "is_resource": True,
+                "is_html": True
+            })
+        
+        return {"resources": messages}
+    except Exception as e:
+        print(f"Error loading resources: {str(e)}")
+        return {"resources": []}
 
