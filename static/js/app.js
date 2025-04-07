@@ -201,8 +201,9 @@ function updateProgressBars(score) {
     
     const currentScore = Math.min(100, Math.max(0, parseInt(score) || 0));
     
-    // Update width and text
+    // Update width and attributes
     progressBar.style.width = currentScore + '%';
+    progressBar.setAttribute('aria-valuenow', currentScore);
     progressBar.textContent = `${currentScore}/100`;
     
     // Update colors

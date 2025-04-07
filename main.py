@@ -335,7 +335,7 @@ async def update_user_progress(user_id, topic, score=1):
         return
     
     # Initialize progress if not exists
-    if "progress" not in user:
+    if not isinstance(user.get("progress"), dict):
         user["progress"] = {}
     
     if topic not in user["progress"]:
@@ -394,10 +394,27 @@ async def get_resources(topic: str = None, subtopic: str = None):
         if topic:
             if topic in resources:
                 if subtopic and subtopic in resources[topic].get('subtopics', {}):
-                    return {"resources": resources[topic]['subtopics'][subtopic]['resources']}
-                return {"resources": resources[topic]['resources']}
-            return {"resources": []}
-        return {"resources": resources}
+                    selected_resources = resources[topic]['subtopics'][subtopic]['resources']
+                else:
+                    selected_resources = resources[topic]['resources']
+            else:
+                selected_resources = []
+        else:
+            selected_resources = []
+            for topic_resources in resources.values():
+                selected_resources.extend(topic_resources.get('resources', []))
+                for subtopic_resources in topic_resources.get('subtopics', {}).values():
+                    selected_resources.extend(subtopic_resources.get('resources', []))
+        
+        messages = []
+        for r in selected_resources:
+            messages.append({
+                "response": f"<a href='{r['url']}' target='_blank'>{r['title']}</a>",
+                "is_resource": True,
+                "is_html": True
+            })
+        
+        return {"resources": messages}
     except Exception as e:
         print(f"Error loading resources: {str(e)}")
         return {"resources": []}
@@ -410,7 +427,6 @@ async def chat(request: Request, current_user: dict = Depends(get_current_user))
     data = await request.json()
     message = data.get("message")
     topic = data.get("topic")
-    quiz_state = data.get("quiz_state", {})
     
     if not topic:
         raise HTTPException(status_code=400, detail="Topic is required")
@@ -433,164 +449,49 @@ async def chat(request: Request, current_user: dict = Depends(get_current_user))
             "subtopics": topic_info["subtopics"]
         }
     
-    # Handle quiz state first
-    if quiz_state and "quiz_id" in quiz_state:
-        quiz = await db.quizzes.find_one({"_id": quiz_state["quiz_id"]})
-        if not quiz:
-            raise HTTPException(status_code=400, detail="Quiz not found")
-        
-        current_q = quiz["questions"][quiz_state["current_question"]]
-        correct_answer = current_q["correct"]
-        
-        if not correct_answer:
-            raise HTTPException(status_code=400, detail="Invalid quiz question")
-        
-        # Check if answer is correct
-        is_correct = message.strip().upper() == correct_answer.upper()
-        
-        # Update score
-        if is_correct:
-            quiz["score"] += 1
-        
-        # Store answer in database
-        if "answers" not in quiz:
-            quiz["answers"] = []
-        quiz["answers"].append({
-            "question": current_q["question"],
-            "user_answer": message,
-            "correct_answer": correct_answer,
-            "is_correct": is_correct
-        })
-        
-        # Update quiz in database
-        await db.quizzes.update_one(
-            {"_id": quiz["_id"]},
-            {"$set": {
-                "score": quiz["score"],
-                "answers": quiz["answers"]
-            }}
-        )
-        
-        # If this was the last question
-        if quiz_state["current_question"] == quiz_state["total_questions"] - 1:
-            # Update user progress based on quiz score
-            await update_user_progress(current_user["_id"], topic, quiz["score"])
-            
-            # Get updated user progress
-            user = await db.users.find_one({"_id": current_user["_id"]})
-            progress = user.get("progress", {})
-            
-            # Generate summary
-            summary = f"Quiz completed!\nYour score: {quiz['score']}/{quiz_state['total_questions']}\n\n"
-            for i, answer in enumerate(quiz["answers"]):
-                summary += f"Question {i+1}: {'✓' if answer['is_correct'] else '✗'}\n"
-                summary += f"Your answer: {answer['user_answer']}\n"
-                summary += f"Correct answer: {answer['correct_answer']}\n\n"
-            
-            # Add encouraging message based on score
-            score_percentage = (quiz["score"] / quiz_state["total_questions"]) * 100
-            if score_percentage >= 80:
-                summary += "Excellent work! You've mastered this topic! 🎉"
-            elif score_percentage >= 60:
-                summary += "Good job! You're making great progress! 👍"
-            else:
-                summary += "Keep practicing! You'll get better with time! 💪"
-            
-            return {
-                "response": summary,
-                "quiz_completed": True,
-                "progress": progress
-            }
-        
-        # Return next question with progress update
-        next_question = quiz["questions"][quiz_state["current_question"] + 1]
-        
-        # Update progress for correct answer
-        if is_correct:
-            await update_user_progress(current_user["_id"], topic, 1)
-            user = await db.users.find_one({"_id": current_user["_id"]})
-            progress = user.get("progress", {})
-        else:
-            progress = None
-        
+    # Common AI-related keywords for broader topic detection
+    ai_keywords = [
+        'ai', 'artificial intelligence', 'machine learning', 'deep learning', 'neural network',
+        'algorithm', 'model', 'training', 'dataset', 'data', 'learn', 'predict', 'classification',
+        'regression', 'clustering', 'nlp', 'computer vision', 'robotics', 'automation',
+        'supervised', 'unsupervised', 'reinforcement', 'ethics', 'bias', 'framework',
+        'python', 'tensorflow', 'pytorch', 'keras', 'scikit', 'opencv', 'roadmap', 'career',
+        'course', 'study', 'guide', 'path', 'recommendation', 'project', 'application'
+    ]
+    
+    message_lower = message.lower()
+    topic_info = TOPICS.get(topic, {})
+    
+    # Check if the message contains any AI-related keywords
+    is_ai_related = any(keyword in message_lower for keyword in ai_keywords)
+    
+    # If not AI-related, check if it might be a general question about learning AI
+    if not is_ai_related and ('how' in message_lower or 'what' in message_lower or 'why' in message_lower or 'where' in message_lower):
+        # Get Together AI to classify if the question is about learning/understanding AI
+        classify_response = await get_together_ai_response([
+            {"role": "system", "content": "You are a classifier. Respond with 'yes' if the question is about learning, understanding, or working with AI/ML/Data Science, otherwise respond with 'no'."},
+            {"role": "user", "content": message}
+        ])
+        is_ai_related = 'yes' in classify_response.lower()
+    
+    # If still not AI-related, return the generic response
+    if not is_ai_related:
         return {
-            "response": f"{'Correct! ✅' if is_correct else 'Incorrect. The correct answer was ' + correct_answer + ' ❌'}\n\nQuestion {quiz_state['current_question'] + 2}/{quiz_state['total_questions']}:\n{next_question['question']}\n\n" + 
-                       "\n".join(next_question["options"]),
-            "quiz_state": {
-                "quiz_id": quiz_state["quiz_id"],
-                "current_question": quiz_state["current_question"] + 1,
-                "total_questions": quiz_state["total_questions"]
-            },
-            "progress": progress
+            "response": "I am an AI learning assistant. Please ask me questions related to artificial intelligence. I can help you with AI concepts, learning resources, career guidance, technical details, or any other AI-related topics."
         }
     
-    # Check for resource requests using NLU
-    resource_intent = await detect_resource_intent(message)
-    if resource_intent:
-        # Get resources for the current topic
-        resources = await get_resources(topic)
-        topic_info = TOPICS.get(topic)
-        
-        if not topic_info:
-            return {
-                "response": f"I don't have any resources for {topic} at the moment.",
-                "is_resource": True
-            }
-        
-        # Collect all resources
-        all_resources = []
-        if resources["resources"]:
-            all_resources.extend(resources["resources"])
-        
-        if topic_info.get('subtopics'):
-            for subtopic in topic_info['subtopics']:
-                subtopic_resources = await get_resources(topic, subtopic.lower().replace(' ', '-'))
-                if subtopic_resources["resources"]:
-                    all_resources.extend(subtopic_resources["resources"])
-        
-        if not all_resources:
-            return {
-                "response": f"I don't have any specific resources for {topic_info['name']} at the moment.",
-                "is_resource": True
-            }
-        
-        # Randomly select 4 resources
-        selected_resources = random.sample(all_resources, min(4, len(all_resources)))
-        
-        # Create array of messages
-        messages = [
-            {"response": f"Here are some helpful resources for {topic_info['name']}:", "is_resource": True}
-        ]
-        
-        # Add each resource as a separate message
-        for r in selected_resources:
-            messages.append({
-                "response": f"{r['title']}: [{r['url']}]({r['url']})",
-                "is_resource": True
-            })
-        
-        return {
-            "response": messages,
-            "multiple_messages": True
-        }
-    
-    # Get Together AI response for specific questions
+    # For AI-related questions, get response from Together AI with a more flexible system prompt
     response = await get_together_ai_response([
-        {"role": "system", "content": f"You are an AI tutor teaching about {topic}. Keep responses concise and educational. If the user asks for more details, provide them."},
+        {"role": "system", "content": """You are an AI tutor with expertise in all areas of artificial intelligence. 
+        Provide helpful, accurate, and educational responses about any AI-related topic, including but not limited to:
+        - Technical concepts and explanations
+        - Learning resources and roadmaps
+        - Career guidance and industry trends
+        - Practical applications and real-world examples
+        - Best practices and recommendations
+        Keep responses focused on AI and related fields."""},
         {"role": "user", "content": message}
     ])
-    
-    # Store chat in database
-    await db.chats.insert_one({
-        "user_id": current_user["_id"],
-        "topic": topic,
-        "message": message,
-        "response": response,
-        "timestamp": datetime.now()
-    })
-    
-    # Update progress for asking questions
-    await update_user_progress(current_user["_id"], topic, 0.5)
     
     return {"response": response}
 
@@ -753,6 +654,3 @@ async def detect_resource_intent(message: str) -> bool:
     # Check if the response indicates a resource request
     return "yes" in response.lower()
 
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
