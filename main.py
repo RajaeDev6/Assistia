@@ -298,6 +298,36 @@ async def get_together_ai_response(messages):
             data = await response.json()
             return data["choices"][0]["message"]["content"]
 
+@app.get("/api/progress")
+async def get_progress(current_user: dict = Depends(get_current_user)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {"progress": current_user.get("progress", 0)}
+
+@app.post("/api/update-progress")
+async def update_progress(request: Request, current_user: dict = Depends(get_current_user)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        data = await request.json()
+        new_score = data.get("score", 0)
+        
+        # Update user's progress in database
+        result = await db.users.update_one(
+            {"_id": current_user["_id"]},
+            {"$set": {"progress": new_score}}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=500, detail="Failed to update progress")
+        
+        return {"success": True, "progress": new_score}
+    except Exception as e:
+        print(f"Error updating progress: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/update-progress")
 async def update_user_progress(user_id, topic, score=1):
     # Get current progress
     user = await db.users.find_one({"_id": user_id})
@@ -723,3 +753,6 @@ async def detect_resource_intent(message: str) -> bool:
     # Check if the response indicates a resource request
     return "yes" in response.lower()
 
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
