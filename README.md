@@ -50,5 +50,4 @@ Built with **FastAPI**, **MongoDB**, and **Together AI**.
 
 ---
 
-## 🗂️ Project Structure
 
